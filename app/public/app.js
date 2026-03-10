@@ -1,4 +1,8 @@
-const { useEffect, useMemo, useState } = React;
+const ReactLib = typeof require === "function" ? require("react") : React;
+const ReactDOMClient =
+  typeof require === "function" ? require("react-dom/client") : ReactDOM;
+
+const { useEffect, useMemo, useState } = ReactLib;
 
 function App() {
   const [items, setItems] = useState([]);
@@ -110,4 +114,20 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+function mountApp(rootElement) {
+  return ReactDOMClient.createRoot(rootElement).render(<App />);
+}
+
+if (typeof module !== "undefined") {
+  module.exports = {
+    App,
+    mountApp
+  };
+}
+
+if (typeof document !== "undefined") {
+  const rootElement = document.getElementById("root");
+  if (rootElement) {
+    mountApp(rootElement);
+  }
+}
