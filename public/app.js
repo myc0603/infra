@@ -73,7 +73,7 @@ function App() {
   return (
     <div className="page">
       <h1>Minimal CRUD</h1>
-      <h2>version 0</h2>
+      <h2>version 1</h2>
       <p>React UI + Express API, file-based storage.</p>
 
       <form onSubmit={handleSubmit}>
