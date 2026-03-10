@@ -1,0 +1,10 @@
+.git
+.gitignore
+node_modules
+__tests__
+coverage
+data
+README.md
+babel.config.json
+jest.setup.js
+npm-debug.log*

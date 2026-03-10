@@ -22,6 +22,17 @@ Express + React(UMD)로 구성된 단순한 CRUD 예제입니다. RDB 없이 `da
 4. 접속
    - `http://localhost:3000`
 
+## Docker
+
+1. 이미지 빌드
+   ```bash
+   docker build -t simple-react-express-crud .
+   ```
+2. 컨테이너 실행
+   ```bash
+   docker run --rm -p 3000:3000 simple-react-express-crud
+   ```
+
 ## 구조
 - `server.js`
 - `public/index.html`
