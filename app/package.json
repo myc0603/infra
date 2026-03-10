@@ -1,0 +1,13 @@
+{
+  "name": "simple-react-express-crud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal React + Express CRUD with file storage",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
