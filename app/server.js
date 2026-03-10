@@ -3,106 +3,138 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-const app = express();
 const PORT = process.env.PORT || 3000;
 
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "items.json");
 
-function ensureDataFile() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, "[]", "utf8");
-  }
-}
+function createItemStore(options = {}) {
+  const dataDir = options.dataDir || DATA_DIR;
+  const dataFile = options.dataFile || path.join(dataDir, "items.json");
 
-function readItems() {
-  ensureDataFile();
-  const raw = fs.readFileSync(DATA_FILE, "utf8");
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeItems(items) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(items, null, 2), "utf8");
-}
-
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
-
-// Create
-app.post("/api/items", (req, res) => {
-  const text = String(req.body.text || "").trim();
-  if (!text) {
-    return res.status(400).json({ error: "text is required" });
+  function ensureDataFile() {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    if (!fs.existsSync(dataFile)) {
+      fs.writeFileSync(dataFile, "[]", "utf8");
+    }
   }
 
-  const now = new Date().toISOString();
-  const item = {
-    id: crypto.randomUUID(),
-    text,
-    createdAt: now,
-    updatedAt: now
+  function readItems() {
+    ensureDataFile();
+    const raw = fs.readFileSync(dataFile, "utf8");
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeItems(items) {
+    fs.writeFileSync(dataFile, JSON.stringify(items, null, 2), "utf8");
+  }
+
+  return {
+    dataDir,
+    dataFile,
+    ensureDataFile,
+    readItems,
+    writeItems
   };
+}
 
-  const items = readItems();
-  items.unshift(item);
-  writeItems(items);
+function createApp(options = {}) {
+  const app = express();
+  const store = createItemStore(options);
 
-  res.status(201).json(item);
-});
+  app.use(express.json());
+  app.use(express.static(path.join(__dirname, "public")));
 
-// Read
-app.get("/api/items", (_req, res) => {
-  const items = readItems();
-  res.json(items);
-});
+  // Create
+  app.post("/api/items", (req, res) => {
+    const text = String(req.body.text || "").trim();
+    if (!text) {
+      return res.status(400).json({ error: "text is required" });
+    }
 
-// Update
-app.put("/api/items/:id", (req, res) => {
-  const { id } = req.params;
-  const text = String(req.body.text || "").trim();
-  if (!text) {
-    return res.status(400).json({ error: "text is required" });
-  }
+    const now = new Date().toISOString();
+    const item = {
+      id: crypto.randomUUID(),
+      text,
+      createdAt: now,
+      updatedAt: now
+    };
 
-  const items = readItems();
-  const idx = items.findIndex((item) => item.id === id);
-  if (idx === -1) {
-    return res.status(404).json({ error: "not found" });
-  }
+    const items = store.readItems();
+    items.unshift(item);
+    store.writeItems(items);
 
-  items[idx] = {
-    ...items[idx],
-    text,
-    updatedAt: new Date().toISOString()
-  };
-  writeItems(items);
+    res.status(201).json(item);
+  });
 
-  res.json(items[idx]);
-});
+  // Read
+  app.get("/api/items", (_req, res) => {
+    const items = store.readItems();
+    res.json(items);
+  });
 
-// Delete
-app.delete("/api/items/:id", (req, res) => {
-  const { id } = req.params;
-  const items = readItems();
-  const idx = items.findIndex((item) => item.id === id);
-  if (idx === -1) {
-    return res.status(404).json({ error: "not found" });
-  }
+  // Update
+  app.put("/api/items/:id", (req, res) => {
+    const { id } = req.params;
+    const text = String(req.body.text || "").trim();
+    if (!text) {
+      return res.status(400).json({ error: "text is required" });
+    }
 
-  const [removed] = items.splice(idx, 1);
-  writeItems(items);
+    const items = store.readItems();
+    const idx = items.findIndex((item) => item.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: "not found" });
+    }
 
-  res.json(removed);
-});
+    items[idx] = {
+      ...items[idx],
+      text,
+      updatedAt: new Date().toISOString()
+    };
+    store.writeItems(items);
 
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
+    res.json(items[idx]);
+  });
+
+  // Delete
+  app.delete("/api/items/:id", (req, res) => {
+    const { id } = req.params;
+    const items = store.readItems();
+    const idx = items.findIndex((item) => item.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: "not found" });
+    }
+
+    const [removed] = items.splice(idx, 1);
+    store.writeItems(items);
+
+    res.json(removed);
+  });
+
+  return app;
+}
+
+function startServer(options = {}) {
+  const app = createApp(options);
+  return app.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
+  });
+}
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = {
+  createApp,
+  createItemStore,
+  startServer
+};
